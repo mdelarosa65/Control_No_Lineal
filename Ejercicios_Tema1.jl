@@ -29,186 +29,17 @@ using OrdinaryDiffEq
 using LinearAlgebra
 
 # ╔═╡ 6ba02e80-d4cf-11ea-19cb-33028d3dc67d
-md"# _Primer tema_
-+ ¿Qué es una ecuación diferencial y como se resuelve?
+md"# _Ejercicios Tema 1_
++ Ejercicio 1
     * Euler
     * Métodos mejores
-+ Sistema de segundo orden con dos polos
-+ Explosión en tiempo finito
-+ Linealización
-+ Ejemplos
-    * Generador
-+ Ciclo límite
-    * Van der Pool
-+ Sistemas discretos
-    * Ecuación logística, el camino hacia el Caos"
-
-# ╔═╡ 7db3fdb0-d4d2-11ea-21fc-597c55dda572
-md"# ¿Qué es una ecuación diferencial?
-
-En la asignatura nos interesan sistemas como este:
-
-$$\frac{dx}{dt}=f(x,t)$$
-
-$$x(0)=x_0$$
-
-Donde x es un vector y la derivada respecto al tiempo se suele escribir como $$\dot x$$ 
-
-Las ecuaciones diferenciales son útiles cuando es fácil expresar cómo cambia una magnitud en el tiempo, pero no tanto cual es el estado $x(t)$ directamente, que es lo que ocurre en casi todos los sistemas físicos.
 "
-
-# ╔═╡ 76079a70-d4cf-11ea-2645-8f43c78eae52
-md" ## Euler
-Si la función $$f$$ tiene buen comportamiento (lo veremos más adelante cuando repasemos la existencia y unicidad) hay una solución de la ecuación que es continua y derivable y usando taylor:
-
-$$x(\Delta t)=x(0) + f(x(0),0)\Delta t + o(\Delta t^2)$$
-
-Si se toman pasos pequeños y repetimos el procedimiento:
-
-$$x(2\Delta t)=x(\Delta t) + f(x(\Delta t),\Delta t) \Delta t + o(\Delta t^2)$$
-...
-
-y llamando $$t_n$$ a $$n\Delta t$$ y $$x_n$$ a $$x(t_n)$$
-
-$$x_{n+1} \approx x_n + f(x_n,t_n)\Delta t + o(\Delta t^2)$$
-
-### Ejemplo de implementación sencilla
-Para el caso escalar
-
-"
-
-# ╔═╡ 66e9ffd0-d4d7-11ea-09c0-03ebaacab879
-function euler(f,x0,tf,Δt)
-	t=0:Δt:tf
-	x=zeros(size(t))
-	x[1]=x0
-	for n=1:(length(t)-1)
-		x[n+1]=x[n]+f(x[n],t[n])*Δt
-	end
-	return (x,t)
-end
-
-# ╔═╡ 0b94f1c0-7113-11eb-13da-c5c5b95ebbf5
-md"Vamos a ver si funciona resolviendo
-$\dot x=-x+sin(t)$ "
-
-# ╔═╡ e885f5b0-d4d4-11ea-06d6-9ddf9619961f
-begin
-	f(x,t)=-x+sin(t)
-		
-	f(x,p,t)=f(x,t) #¡Despacho múltiple! (lo necesitamos para luego)
-end
 
 # ╔═╡ b99fc9b0-d4d9-11ea-0e18-cfd5af90188f
 tf=10
 
-# ╔═╡ 3be6b020-d4d8-11ea-3356-23afd148ebc9
-@bind N Slider(1:100)
-
-# ╔═╡ 220f6f12-d4d9-11ea-159e-c1e1551fd732
-Δt=tf/N;
-
-# ╔═╡ 23f5ece0-d4da-11ea-1330-c5d077bd3a89
-md"N=$(N) $$\to \Delta t=$$ $(Δt)"
-
-# ╔═╡ d8b5ed40-d4d7-11ea-27d4-bf594518802b
-x,t =euler(f,0,10,Δt);
-
-# ╔═╡ 2b7df180-d4d8-11ea-118f-75e8709e36c3
-plot(t,x,label="x")
-
-# ╔═╡ 455e0c30-d4d7-11ea-22ce-0d04b4e8d860
-md"## Hay métodos mejores:
-
-+ Ajustan los pasos automáticamente
-
-+ Tienen más precisión para los mismos pasos
-
-+ Están integrados con otras funciones como *plots*, permite interpolar los resultados automáticamente, etc...
-
-Vamos a usar la librería OrdinaryDiffEq que es parte de DifferencialEquation.jl
-"
-
-# ╔═╡ c90980d0-d637-11ea-112d-c336b2080d87
-begin
-	x0 = 0
-	tspan = (0.0,10.0)
-	#ojo se necesita f(x,p,t) donde p son los parámetros (no tenemos)
-	#de ahí la definición de antes
-	prob = ODEProblem(f,x0,tspan);
-	sol = solve(prob,Tsit5(), reltol=1e-8, abstol=1e-8);
-	sol.u #su u es nuestro x
-end
-
-# ╔═╡ 1f44a88e-7114-11eb-0ac2-d12cd3fb40ef
-sol.t
-
-# ╔═╡ 4a7f5f72-0e0c-11eb-2b7c-4d7214c09c4b
-sol(2.751) #¡se puede usar como una función continua de t!
-
-# ╔═╡ a92de300-d63c-11ea-2446-5b099592d734
-plot(sol, xaxis="t",yaxis="x(t)",label="x",legend=false)
-
-# ╔═╡ 09980bd0-d63d-11ea-0752-1d033ee00cc9
-md"## Sistema de segundo orden con dos polos
-
-En un sistema lineal
-
-$\dot x=Ax$
-
-La solución es $x=x_0e^{At}$ y su carácter depende de los autovalores, es decir las soluciones de $|A- \lambda \mathbb{1} |=0$
-
-La estabilidad depende de que la parte real de los $\lambda$ sea negativa (los autovalores estén en el semiplano izquierdo del plano complejo)
-
-Nos interesa el sistema lineal segundo orden porque es simple y contiene todos los casos de interés:
-
-$\dot x_1=x_2$
-$\dot x_2=p_1x_1+p_2x_2$
-"
-
-# ╔═╡ e6afc70e-d63d-11ea-0d36-738b13f0de30
-function f_lineal(x,p,t)
-	dx=[0.0 ; 0.0]
-	dx[1]=x[2];
-	dx[2]=p[1]*x[1]+p[2]*x[2]
-	return dx
-end
-
-# ╔═╡ 2ff44950-7116-11eb-3ad9-c3e145cdae4e
-md"
-Polos Reales? $(@bind son_reales CheckBox())
-$(@bind slider1 Slider(-1:0.05:1))
-$(@bind slider2 Slider(-1:0.05:1))
-"
-
-# ╔═╡ a0573fe0-d6a2-11ea-057e-5140c323c005
-begin
-	if son_reales==true 
-		# el polinomio es (s-real1)*(s-real2)
-		# s^2+(-real1-real2)s + real1*real2 --> k2= real1 + real2 k1=real1*real2
-		k2= slider1 + slider2
-		k1=-slider1*slider2
-	else # el polinomio es (s-real-imag*im)*(s-real+imag*im)
-		 # es decir s^2 - 2*real*s + real^2 + imag^2 --> k2=-2*real k1=-real^2-imag^2
-		k2=2*slider1
-		k1=-slider1^2 - slider2^2
-	end
-	A=[0 1; k1 k2]
-	autovalores,_=eigen(A)  #para esto necesito LinearAlgebra
-	md"""
-	k1= $(k1), k2= $(k2)
-	
-	autovalores= $(autovalores)"""
-end
-
-# ╔═╡ 5a802550-d665-11ea-3f9f-b103ce80822f
-scatter(real(autovalores),imag(autovalores),
-	grid=true,legend=false, framestyle = :origin,
-	xaxis=[-1,1], yaxis=[-1,1] )
-
 # ╔═╡ 1790c760-0e0d-11eb-1c47-f5e902e158fb
-md" # Muy bien pero ¡Enséñame el código!
-... vosotros lo habéis querido ☺	"
+md" # Código pintar diagramas"
 
 # ╔═╡ f5ca89e0-0e0c-11eb-32a1-fb22511f42ae
 function flechas!(figura,f,p,rangos;N=10)
@@ -284,6 +115,55 @@ function trayectoria(x0,f,p,rangos;N=10,pasosMax=100)
 	Y=append!(reverse(Y2),Y1)
 	return (X,Y)
 end
+
+# ╔═╡ 551e7d26-b872-4642-b400-e063a544f311
+md" # Ejercicio 1"
+
+# ╔═╡ cc44d9a6-e73c-4c54-83d7-24480ecf1278
+begin
+	
+# Definir el sistema de ecuaciones diferenciales
+function oscilador_lineal(z, p, t)
+	dz=[0.0 ; 0.0]
+	alpha, omega = p
+    dz[1] = z[2]
+    dz[2] = -omega^2*z[1]-2*alpha*omega*z[2]
+	return dz
+	
+end
+
+# Condiciones iniciales
+z0 = [1.0, 0.0]  
+
+# Parámetros del sistema
+omega = 2.0  # Asegúrate de que b > 0
+alpha_values = [-0.5, 0.0, 0.5]  # Diferentes valores de a para analizar
+
+# Graficar el plano fase y analizar la estabilidad
+for alpha in alpha_values
+    p = (omega, alpha)
+    
+    # Resolver el sistema de ecuaciones
+    prob = ODEProblem(oscilador_lineal, z0, (0.0, 10.0), p)
+    sol = solve(prob, Vern7(), dt=0.01)
+    
+    # Graficar el plano fase
+    plot(sol, xlabel="x", ylabel="x'", legend=false, title="a = $alpha", linewidth=2)
+    scatter!([0], [0], color=:red, label="Punto Singular", markersize=5)
+    
+    # Calcular los autovalores de la matriz jacobiana en el punto singular
+    J = [0 1; -omega^2 -2*alpha*omega]
+    eigenvalues_J = eigen(J).values
+    println("Para a = $alpha, los autovalores son: $eigenvalues_J")
+end
+
+	
+end
+
+# ╔═╡ 5a802550-d665-11ea-3f9f-b103ce80822f
+scatter(real(autovalores),imag(autovalores),
+	grid=true,legend=false, framestyle = :origin,
+	xaxis=[-1,1], yaxis=[-1,1] )
 
 # ╔═╡ b51d4d90-d7f4-11ea-07aa-adcb4f418c99
 md"## Clasificación sistema de segundo orden"
@@ -696,38 +576,79 @@ $r_\infty-r_0 \approx \Delta r_0 +  \frac {\Delta r_0}{4.7} +\frac {\Delta r_0}{
 
 " 
 
+# ╔═╡ 3af0868f-c57c-46fe-a5e2-db2a210efac2
+begin
+	if son_reales==true 
+		# el polinomio es (s-real1)*(s-real2)
+		# s^2+(-real1-real2)s + real1*real2 --> k2= real1 + real2 k1=real1*real2
+		k2= slider1 + slider2
+		k1=-slider1*slider2
+	else # el polinomio es (s-real-imag*im)*(s-real+imag*im)
+		 # es decir s^2 - 2*real*s + real^2 + imag^2 --> k2=-2*real k1=-real^2-imag^2
+		k2=2*slider1
+		k1=-slider1^2 - slider2^2
+	end
+	A=[0 1; k1 k2]
+	autovalores,_=eigen(A)  #para esto necesito LinearAlgebra
+	md"""
+	k1= $(k1), k2= $(k2)
+	
+	autovalores= $(autovalores)"""
+end
+
+# ╔═╡ 60692fd2-4332-4f06-8690-22f342659686
+md"
+Valores de alpha y omega $(@bind son_reales CheckBox())
+$(@bind slider1 Slider(-1:0.05:1))
+$(@bind slider2 Slider(-1:0.05:1))
+"
+
+# ╔═╡ 2ff44950-7116-11eb-3ad9-c3e145cdae4e
+md"
+Polos Reales? $(@bind son_reales CheckBox())
+$(@bind slider1 Slider(-1:0.05:1))
+$(@bind slider2 Slider(-1:0.05:1))
+"
+
+# ╔═╡ a0573fe0-d6a2-11ea-057e-5140c323c005
+begin
+	if son_reales==true 
+		# el polinomio es (s-real1)*(s-real2)
+		# s^2+(-real1-real2)s + real1*real2 --> k2= real1 + real2 k1=real1*real2
+		k2= slider1 + slider2
+		k1=-slider1*slider2
+	else # el polinomio es (s-real-imag*im)*(s-real+imag*im)
+		 # es decir s^2 - 2*real*s + real^2 + imag^2 --> k2=-2*real k1=-real^2-imag^2
+		k2=2*slider1
+		k1=-slider1^2 - slider2^2
+	end
+	A=[0 1; k1 k2]
+	autovalores,_=eigen(A)  #para esto necesito LinearAlgebra
+	md"""
+	k1= $(k1), k2= $(k2)
+	
+	autovalores= $(autovalores)"""
+end
+
 # ╔═╡ Cell order:
-# ╟─6ba02e80-d4cf-11ea-19cb-33028d3dc67d
-# ╟─7db3fdb0-d4d2-11ea-21fc-597c55dda572
-# ╟─76079a70-d4cf-11ea-2645-8f43c78eae52
-# ╠═66e9ffd0-d4d7-11ea-09c0-03ebaacab879
-# ╟─0b94f1c0-7113-11eb-13da-c5c5b95ebbf5
-# ╠═e885f5b0-d4d4-11ea-06d6-9ddf9619961f
+# ╠═6ba02e80-d4cf-11ea-19cb-33028d3dc67d
 # ╠═b99fc9b0-d4d9-11ea-0e18-cfd5af90188f
 # ╠═ce44280b-1637-4866-b473-b9941c76c06d
-# ╠═3be6b020-d4d8-11ea-3356-23afd148ebc9
-# ╠═220f6f12-d4d9-11ea-159e-c1e1551fd732
-# ╟─23f5ece0-d4da-11ea-1330-c5d077bd3a89
-# ╠═d8b5ed40-d4d7-11ea-27d4-bf594518802b
-# ╠═2b7df180-d4d8-11ea-118f-75e8709e36c3
-# ╟─455e0c30-d4d7-11ea-22ce-0d04b4e8d860
 # ╠═159f28e2-d4db-11ea-13e6-a97e2e7f7c60
-# ╠═c90980d0-d637-11ea-112d-c336b2080d87
-# ╠═1f44a88e-7114-11eb-0ac2-d12cd3fb40ef
-# ╠═4a7f5f72-0e0c-11eb-2b7c-4d7214c09c4b
-# ╠═a92de300-d63c-11ea-2446-5b099592d734
-# ╟─09980bd0-d63d-11ea-0752-1d033ee00cc9
-# ╠═e6afc70e-d63d-11ea-0d36-738b13f0de30
 # ╠═6cbb32f0-d665-11ea-3f24-41cbe1910b80
 # ╠═5a802550-d665-11ea-3f9f-b103ce80822f
-# ╠═2ff44950-7116-11eb-3ad9-c3e145cdae4e
+# ╟─2ff44950-7116-11eb-3ad9-c3e145cdae4e
 # ╠═a0573fe0-d6a2-11ea-057e-5140c323c005
 # ╠═90208f82-d4ba-11ea-11e6-7f51e6ffc5d5
-# ╟─1790c760-0e0d-11eb-1c47-f5e902e158fb
+# ╠═1790c760-0e0d-11eb-1c47-f5e902e158fb
 # ╟─f5ca89e0-0e0c-11eb-32a1-fb22511f42ae
 # ╟─165464e2-0e0f-11eb-3851-3701a6c78502
 # ╟─915aa560-0e0e-11eb-18d4-e3a899ee2c1c
 # ╟─7115307e-d660-11ea-3f2f-4d4963a60e39
+# ╠═551e7d26-b872-4642-b400-e063a544f311
+# ╠═cc44d9a6-e73c-4c54-83d7-24480ecf1278
+# ╠═60692fd2-4332-4f06-8690-22f342659686
+# ╠═3af0868f-c57c-46fe-a5e2-db2a210efac2
 # ╟─b51d4d90-d7f4-11ea-07aa-adcb4f418c99
 # ╟─0b2775be-d7fb-11ea-0b82-0d2b4d544d31
 # ╟─4100c3f0-d7f5-11ea-10c3-593316528d50
